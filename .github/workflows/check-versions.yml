@@ -1,0 +1,37 @@
+name: Check Versions
+
+on:
+  schedule:
+    - cron: '0 0 * * 0' # Run every Sunday at 00:00 UTC
+
+jobs:
+
+  check-versions:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Check Go Version
+      run: |
+        GO_LATEST=$(curl -s https://golang.org/VERSION?m=text | tr -d '+' | cut -d' ' -f3)
+        GO_CURRENT=$(grep -oP '(?<=GO_VERSION=)\d+\.\d+\.\d+' Dockerfile)
+        if [ "$GO_LATEST" != "$GO_CURRENT" ]; then
+          echo "Go version $GO_LATEST is available (current: $GO_CURRENT)"
+        fi
+
+    - name: Check Gitleaks Version
+      run: |
+        GITLEAKS_LATEST=$(curl -s https://api.github.com/repos/zricethezav/gitleaks/releases/latest | grep -oP '"tag_name": "\K(.*)(?=")')
+        GITLEAKS_CURRENT=$(grep -oP '(?<=GITLEAKS_VERSION=)\d+\.\d+\.\d+' Dockerfile)
+        if [ "$GITLEAKS_LATEST" != "$GITLEAKS_CURRENT" ]; then
+          echo "Gitleaks version $GITLEAKS_LATEST is available (current: $GITLEAKS_CURRENT)"
+        fi
+
+    # Add similar steps for TruffleHog and Talisman
+
+    - name: Send Notification
+      if: failure()
+      run: |
+        # Replace with your notification logic, e.g., sending an email or creating an issue
+        echo "New versions are available. Please update the Dockerfile."
