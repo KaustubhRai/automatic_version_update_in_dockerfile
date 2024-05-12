@@ -18,13 +18,16 @@ jobs:
         sudo apt-get install -y jq
 
     - name: Check Go Version
+      id: check-go-version
       run: |
-        GO_LATEST=$(curl -s https://go.dev/VERSION?m=text | tr -d '\n')
+        GO_LATEST=$(curl -s https://go.dev/VERSION?m=text | head -n 1 | cut -d ' ' -f 1)
         GO_CURRENT=$(grep -oP '(?<=GO_VERSION=)\d+\.\d+\.\d+' Dockerfile)
         if [ "$GO_LATEST" != "$GO_CURRENT" ]; then
           echo "Go version $GO_LATEST is available (current: $GO_CURRENT)"
+          echo "::set-output name=result::Go version $GO_LATEST is available (current: $GO_CURRENT)"
         else
           echo "Go version $GO_CURRENT is up-to-date"
+          echo "::set-output name=result::Go version $GO_CURRENT is up-to-date"
         fi
 
     - name: Check Gitleaks Version
@@ -38,7 +41,7 @@ jobs:
     # Add similar steps for TruffleHog and Talisman
 
     - name: Send Notification
-      if: failure()
+      if: contains(steps.check-go-version.outputs.result, 'is available')
       run: |
         # Replace with your notification logic, e.g., sending an email or creating an issue
-        echo "New versions are available. Please update the Dockerfile."
+        echo "New versions for Golang is available. Please update the Dockerfile."
