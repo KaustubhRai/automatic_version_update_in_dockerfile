@@ -24,10 +24,10 @@ jobs:
         GO_CURRENT=$(grep -oP '(?<=GO_VERSION=)\d+\.\d+\.\d+' Dockerfile)
         if [ "$GO_LATEST" != "$GO_CURRENT" ]; then
           echo "Go version $GO_LATEST is available (current: $GO_CURRENT)"
-          echo "::set-output name=result::Go version $GO_LATEST is available (current: $GO_CURRENT)"
+          echo "result=Go version $GO_LATEST is available (current: $GO_CURRENT)" >> $GITHUB_OUTPUT
         else
           echo "Go version $GO_CURRENT is up-to-date"
-          echo "::set-output name=result::Go version $GO_CURRENT is up-to-date"
+          echo "result=Go version $GO_CURRENT is up-to-date" >> $GITHUB_OUTPUT
         fi
 
     - name: Check Gitleaks Version
@@ -43,5 +43,11 @@ jobs:
     - name: Send Notification
       if: contains(steps.check-go-version.outputs.result, 'is available')
       run: |
-        # Replace with your notification logic, e.g., sending an email or creating an issue
-        echo "New versions for Golang is available. Please update the Dockerfile."
+        # Create a new issue on GitHub using the API
+        ISSUE_TITLE="New version of Go is available"
+        ISSUE_BODY="A new version of Go (${{ steps.check-go-version.outputs.result }}) is available. Please update the Dockerfile."
+        ISSUE_RESPONSE=$(curl -X POST -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+                         -H "Content-Type: application/json" \
+                         -d '{"title":"'"$ISSUE_TITLE"'","body":"'"$ISSUE_BODY"'"}' \
+                         https://api.github.com/repos/${{ github.repository }}/issues)
+        echo "New issue created: $ISSUE_RESPONSE"
