@@ -19,7 +19,7 @@ jobs:
 
     - name: Check Go Version
       run: |
-        GO_LATEST=$(curl -s https://api.github.com/repos/golang/go/releases/latest | jq -r '.tag_name' | sed 's/go//g')
+        GO_LATEST=$(curl -s https://go.dev/VERSION?m=text | tr -d '\n')
         GO_CURRENT=$(grep -oP '(?<=GO_VERSION=)\d+\.\d+\.\d+' Dockerfile)
         if [ "$GO_LATEST" != "$GO_CURRENT" ]; then
           echo "Go version $GO_LATEST is available (current: $GO_CURRENT)"
