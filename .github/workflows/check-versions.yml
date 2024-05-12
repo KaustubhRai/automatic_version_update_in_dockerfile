@@ -43,10 +43,9 @@ jobs:
     - name: Send Notification
       if: contains(steps.check-go-version.outputs.result, 'is available')
       run: |
-        # Create a new issue on GitHub using the API
         ISSUE_TITLE="New version of Go is available"
         ISSUE_BODY="A new version of Go (${{ steps.check-go-version.outputs.result }}) is available. Please update the Dockerfile."
-        ISSUE_RESPONSE=$(curl -X POST -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+        ISSUE_RESPONSE=$(curl -X POST -H "Authorization: token ${{ secrets.REPO_ACCESS_TOKEN }}" \
                          -H "Content-Type: application/json" \
                          -d '{"title":"'"$ISSUE_TITLE"'","body":"'"$ISSUE_BODY"'"}' \
                          https://api.github.com/repos/${{ github.repository }}/issues)
