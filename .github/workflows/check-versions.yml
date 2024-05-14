@@ -40,10 +40,20 @@ jobs:
           echo "result=Gitleaks version $GITLEAKS_LATEST is available (current: $GITLEAKS_CURRENT)" >> $GITHUB_OUTPUT
         fi
 
+    - name: Check Trufflehog Version
+      id: check-trufflehog-version
+      run: |
+        TRUFFLEHOG_LATEST=$(curl -sSL https://api.github.com/repos/trufflesecurity/trufflehog/releases/latest | jq -r '.tag_name' | sed 's/v//')
+        TRUFFLEHOG_CURRENT=$(grep -oP '(?<=TRUFFLEHOG_VERSION=)\d+\.\d+\.\d+' Dockerfile)
+        if [ "$TRUFFLEHOG_LATEST" != "$TRUFFLEHOG_CURRENT" ]; then
+          echo "Trufflehog version $TRUFFLEHOG_LATEST is available (current: $TRUFFLEHOG_CURRENT)"
+          echo "result=Trufflehog version $TRUFFLEHOG_LATEST is available (current: $TRUFFLEHOG_CURRENT)" >> $GITHUB_OUTPUT
+        fi
+
     # Add similar steps for TruffleHog and Talisman
 
     - name: Send Notification
-      if: contains(steps.check-go-version.outputs.result, 'is available') || contains(steps.check-gitleaks-version.outputs.result, 'is available')  # Check for both Go and Gitleaks updates
+      if: contains(steps.check-go-version.outputs.result, 'is available') || contains(steps.check-gitleaks-version.outputs.result, 'is available') || contains(steps.check-trufflehog-version.outputs.result, 'is available')  # Check for Go, Gitleaks, and Trufflehog updates
       run: |
         ISSUE_TITLE=""  # Initialize empty title
         ISSUE_BODY=""   # Initialize empty body
@@ -61,6 +71,15 @@ jobs:
           fi
           ISSUE_TITLE+="Gitleaks version is available"
           ISSUE_BODY+="A new version of Gitleaks (${{ steps.check-gitleaks-version.outputs.result }}) is available. Consider updating.\n"
+        fi
+        
+        # Check for Trufflehog update and add to title/body
+        if [[ "${{ steps.check-trufflehog-version.outputs.result }}" == *"available"* ]]; then
+          if [[ -n "$ISSUE_TITLE" ]]; then  # Only add "and" if there's already content in title
+            ISSUE_TITLE+=" and "
+          fi
+          ISSUE_TITLE+="Trufflehog version is available"
+          ISSUE_BODY+="A new version of Trufflehog (${{ steps.check-trufflehog-version.outputs.result }}) is available. Consider updating.\n"
         fi
 
         # Create issue only if there's content in title and body
