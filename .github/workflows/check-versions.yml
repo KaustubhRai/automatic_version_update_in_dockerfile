@@ -42,30 +42,31 @@ jobs:
 
     # Add similar steps for TruffleHog and Talisman
 
-      - name: Send Notification
-        if: contains(steps.check-go-version.outputs.result, 'is available') || contains(steps.check-gitleaks-version.outputs.result, 'is available')  # Check for both Go and Gitleaks updates
-        run: |
-          ISSUE_TITLE=""  # Initialize empty title
-          ISSUE_BODY=""   # Initialize empty body
+    - name: Send Notification
+      if: contains(steps.check-go-version.outputs.result, 'is available') || contains(steps.check-gitleaks-version.outputs.result, 'is available')  # Check for both Go and Gitleaks updates
+      run: |
+        ISSUE_TITLE=""  # Initialize empty title
+        ISSUE_BODY=""   # Initialize empty body
 
-          # Check for Go update and add to title/body
-          if [[ <span class="math-inline">\{\{ steps\.check\-go\-version\.outputs\.result \}\} \=\~ "available" \]\]; then  \# Use \=\~ for pattern matching
-ISSUE\_TITLE\+\="New version of Go is available"
-ISSUE\_BODY\+\="A new version of Go \(</span>{{ steps.check-go-version.outputs.result }}) is available. Please update the Dockerfile.\n\n"
+        # Check for Go update and add to title/body
+        if [[ ${{ steps.check-go-version.outputs.result }} =~ "available" ]]; then
+          ISSUE_TITLE+="New version of Go is available"
+          ISSUE_BODY+="A new version of Go (${{ steps.check-go-version.outputs.result }}) is available. Please update the Dockerfile.\n\n"
+        fi
+
+        # Check for Gitleaks update and add to title/body
+        if [[ ${{ steps.check-gitleaks-version.outputs.result }} =~ "available" ]]; then
+          if [[ -n "$ISSUE_TITLE" ]]; then  # Only add "and" if there's already content in title
+            ISSUE_TITLE+=" and "
           fi
+          ISSUE_TITLE+="Gitleaks version is available"
+          ISSUE_BODY+="A new version of Gitleaks (${{ steps.check-gitleaks-version.outputs.result }}) is available. Consider updating.\n"
+        fi
 
-          # Check for Gitleaks update and add to title/body
-          if [[ ${{ steps.check-gitleaks-version.outputs.result }} =~ "available" ]]; then
-            if [[ -z "<span class="math-inline">ISSUE\_TITLE" \]\]; then  \# Only add "and" if there's already content in title
-ISSUE\_TITLE\+\="Gitleaks version is available"
-else
-ISSUE\_TITLE\+\=" and Gitleaks version is available"
-fi
-ISSUE\_BODY\+\="A new version of Gitleaks \(</span>{{ steps.check-gitleaks-version.outputs.result }}) is available. Consider updating.\n"
-          fi
-
-          # Create issue only if there's content in title and body
-          if [[ -n "$ISSUE_TITLE" && -n "<span class="math-inline">ISSUE\_BODY" \]\]; then
-ISSUE\_RESPONSE\=</span>(curl -X POST -H "Authorization: token ${{ secrets.REPO_ACCESS_TOKEN }}" \
-                                 -H "Content-Type: application/json" \
-                                 -d '{"title":"'"$ISSUE_TITLE"'","
+        # Create issue only if there's content in title and body
+        if [[ -n "$ISSUE_TITLE" && -n "$ISSUE_BODY" ]]; then
+          curl -X POST -H "Authorization: token ${{ secrets.REPO_ACCESS_TOKEN }}" \
+               -H "Content-Type: application/json" \
+               -d '{"title":"'"$ISSUE_TITLE"'","body":"'"$ISSUE_BODY"'"}' \
+               https://api.github.com/repos/${{ github.repository }}/issues
+        fi
