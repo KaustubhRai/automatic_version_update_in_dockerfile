@@ -50,10 +50,18 @@ jobs:
           echo "result=Trufflehog version $TRUFFLEHOG_LATEST is available (current: $TRUFFLEHOG_CURRENT)" >> $GITHUB_OUTPUT
         fi
 
-    # Add similar steps for TruffleHog and Talisman
+    - name: Check Talisman Version
+      id: check-talisman-version
+      run: |
+          TALISMAN_LATEST=$(curl -sSL https://api.github.com/repos/thoughtworks/talisman/releases/latest | jq -r '.tag_name' | sed 's/v//')
+          TALISMAN_CURRENT=$(grep -oP '(?<=TALISMAN_VERSION=)\d+\.\d+\.\d+' Dockerfile)
+          if [ "$TALISMAN_LATEST" != "$TALISMAN_CURRENT" ]; then
+            echo "Talisman version $TALISMAN_LATEST is available (current: $TALISMAN_CURRENT)"
+            echo "result=Talisman version $TALISMAN_LATEST is available (current: $TALISMAN_CURRENT)" >> $GITHUB_OUTPUT
+          fi
 
     - name: Send Notification
-      if: contains(steps.check-go-version.outputs.result, 'is available') || contains(steps.check-gitleaks-version.outputs.result, 'is available') || contains(steps.check-trufflehog-version.outputs.result, 'is available')  # Check for Go, Gitleaks, and Trufflehog updates
+      if: contains(steps.check-go-version.outputs.result, 'is available') || contains(steps.check-gitleaks-version.outputs.result, 'is available') || contains(steps.check-trufflehog-version.outputs.result, 'is available') || contains(steps.check-talisman-version.outputs.result, 'is available')  # Check for Go, Gitleaks, Trufflehog, and Talisman updates
       run: |
         ISSUE_TITLE=""  # Initialize empty title
         ISSUE_BODY=""   # Initialize empty body
@@ -82,6 +90,15 @@ jobs:
           ISSUE_BODY+="A new version of Trufflehog (${{ steps.check-trufflehog-version.outputs.result }}) is available. Consider updating the Dockerfile.\n\n"
         fi
 
+        # Check for Talisman update and add to title/body
+        if [[ "${{ steps.check-talisman-version.outputs.result }}" == *"available"* ]]; then
+          if [[ -n "$ISSUE_TITLE" ]]; then  # Only add "and" if there's already content in title
+            ISSUE_TITLE+=" and "
+          fi
+          ISSUE_TITLE+="New Talisman version"
+          ISSUE_BODY+="A new version of Talisman (${{ steps.check-talisman-version.outputs.result }}) is available. Consider updating the Dockerfile.\n\n"
+        fi
+        
         # Create issue only if there's content in title and body
         if [[ -n "$ISSUE_TITLE" && -n "$ISSUE_BODY" ]]; then
           curl -X POST -H "Authorization: token ${{ secrets.REPO_ACCESS_TOKEN }}" \
